@@ -1,5 +1,3 @@
-
-
 struct Location{
 	1:string host,
 	2:string port
@@ -21,6 +19,6 @@ service MapRedMaster{
 	list<information> get_all_outputs(1:configuration reduce_conf);
 }
 
-service Container{
-	void run_task(1:configuration conf, 2:binary zip);
+service FileService{
+
 }

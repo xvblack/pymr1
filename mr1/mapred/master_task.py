@@ -1,5 +1,6 @@
 from .mapred_taskbase import MapRedTaskBase, mapred_thrift
 from thriftpy.rpc import make_server
+from mr1.rpc import ThriftEndPoint
 from pathlib import Path
 import thriftpy
 import time
@@ -159,13 +160,15 @@ class MapRedMasterTask(MapRedTaskBase):
 		for map_conf in self.map_confs:
 
 			container_info = resource_node.allocate_node_container()
-			container = self.container.connect_remote_container(container_info)
+			endpoint = ThriftEndPoint.deserialize(container_info)
+			container = self.container.connect_remote_container(endpoint)
 			container.run_task(map_conf.conf, self.zip)
 
 		for reduce_conf in self.reduce_confs:
 
 			container_info = resource_node.allocate_node_container()
-			container = container.connect_remote_container(container_info)
+			endpoint = ThriftEndPoint.deserialize(container_info)
+			container = self.container.connect_remote_container(endpoint)
 			container.run_task(reduce_conf.conf, self.zip)
 
 		while self.reduce_finished != self.reduce_count:

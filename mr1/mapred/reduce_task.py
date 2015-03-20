@@ -18,7 +18,7 @@ class SimpleReducer:
 
     def reduce(self, key, values):
         self.count += 1
-        print self.count, key, values
+        print "%s#%s#%s" % (self.count, key, values)
         self.collector.collect(key, len(values))
 
 class NullCollector:
@@ -125,7 +125,7 @@ class ReduceTask(MapRedTaskBase):
             output_info = output.output_info
 
             data_stream = fs.open(output_info, "r")
-            kv_iter = SplitLineIterator(data_stream)
+            kv_iter = SplitLineIterator(data_stream, "\t")
             input_iters.append(kv_iter)
 
         # Shuffle

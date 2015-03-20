@@ -1,4 +1,7 @@
 from thriftpy.rpc import make_server
+import thriftpy
+
+container_thrift = thriftpy.load("resources/container.thrift")
 
 class IpEndPoint:
     def __init__(self, host, port):
@@ -16,6 +19,9 @@ class ThriftEndPoint:
         self.port = port
         self.service_name = service_name
 
+    def __str__(self):
+        return "<%s %s>" % (self.__class__.__name__, self.serialize())
+
     def serialize(self):
         return "%s:%s/%s" % (self.host, self.port, self.service_name)
 
@@ -23,4 +29,4 @@ class ThriftEndPoint:
     def deserialize(s):
         host, remain = s.split(":")
         port, service_name = remain.split("/")
-        return ThriftEndPoint(host, port, service_name)
+        return ThriftEndPoint(host, int(port), service_name)

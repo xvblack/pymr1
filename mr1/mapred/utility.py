@@ -13,6 +13,18 @@ class SimpleMerger(object):
                 self.all.append(i)
 
         self.all.sort()
-        return iter(self.all)
+        values = []
+        current_key = None
+        for key, value in self.all:
+            if key == current_key:
+                values.append(value)
+            else:
+                if current_key != None:
+                    yield (current_key, values)
+                current_key = key
+                values = [value]
+        if current_key != None:
+            yield (current_key, values)
+        return
         
 Merger = SimpleMerger

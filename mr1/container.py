@@ -5,11 +5,11 @@ from thriftpy.server import TThreadedServer
 from thriftpy.thrift import TClient, TMultiplexingProcessor, TProcessor
 from threading import Thread
 import mr1.utility as utility
-from mr1.rpc import IpEndPoint, ThriftEndPoint
+from mr1.rpc import IpEndPoint, ThriftEndPoint, container_thrift
 import logging
 
 from mr1.mapred import MapTask, ReduceTask, MapRedMasterTask
-import itertools
+import itertools, random
 
 
 class MultiplexThriftServer:
@@ -59,7 +59,23 @@ class LocalResourceNode:
         self.container = container
 
     def allocate_node_container(self):
-        return self.container.thrift_server.endpoint
+        return self.container.thrift_server.endpoint.get_service("container").serialize()
+
+class RandomResourceNode:
+
+    def __init__(self, container):
+        self.local_container = local_container
+        self.local_container.add_service("resource_node", container_thrift.ResourceNode, self, unique=True)
+        self.container_list = {}
+
+
+    def add_container(self, endpoint):
+        if endpoint not in self.container_list:
+            self.container_list[endpoint] = ThriftEndPoint.deserialize(endpoint)
+
+    def allocate_node_container(self):
+        k = random.choice(self.container_list.keys())
+        return self.container_list[k].serialize()
 
 class Container(Thread):
 
@@ -80,15 +96,30 @@ class Container(Thread):
         self.thrift_server.server.daemon = True
         self.services = {}
 
+        self.add_service("container", container_thrift.Container, self, unique=True)
+        self.setup_resource_node()
+
+    def setup_resource_node(self):
+        assert "resource_node" in self.conf
+        conf = self.conf["resource_node"]
+        if conf["type"] == "local":
+            self.resource_node = LocalResourceNode(self)
+        else:
+            raise Exception("No resource node")
+
     def run(self):
         self.thrift_server.server.serve()
 
-    def add_service(self, service_name, service, handler):
+    def add_service(self, service_name, service, handler, unique=False):
         processor = TProcessor(service, handler)
-        for i in itertools.count():
-            if "%s_%s" % (service_name, i) not in self.services:
-                break
-        service_name = "%s_%s" % (service_name, i)
+        if not unique:
+            for i in itertools.count():
+                if "%s_%s" % (service_name, i) not in self.services:
+                    break
+            service_name = "%s_%s" % (service_name, i)
+        else:
+            service_name = service_name
+        assert service_name not in self.services
         self.services[service_name] = processor
         self.thrift_server.processor.register_processor(service_name, processor)
         return service_name
@@ -121,13 +152,14 @@ class Container(Thread):
 
     def connect_resource_node(self):
         # TODO: replace with real resource node
-        return LocalResourceNode(self)
+        return self.resource_node
 
-    def connect_remote_container(self, remote_container):
-        # TODO: replace with real remote container
-        assert remote_container == self.thrift_server.endpoint
+    def connect_remote_container(self, endpoint):
+        self.logger.debug("Connecting remote container %s" % endpoint)
+        return self.connect_remote_service(endpoint, container_thrift.Container)
         return self
 
     def connect_remote_service(self, endpoint, service):
+        self.logger.debug("Connecting remote service %s at %s" % (service, endpoint))
         client = MultiplexThriftFactory.make_client(endpoint, service).client
         return client

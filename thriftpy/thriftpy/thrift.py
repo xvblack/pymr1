@@ -246,7 +246,6 @@ class TProcessor(object):
         if not result.oneway:
             self.send_result(oprot, api, result, seqid)
 
-
 class TMultiplexingProcessor(TProcessor):
     processors = {}
     service_map = {}
@@ -254,40 +253,51 @@ class TMultiplexingProcessor(TProcessor):
     def __init__(self):
         pass
 
-    def register_processor(self, processor, name=None):
+    def register_processor(self, service_name, processor):
         service = processor._service
         module = inspect.getmodule(processor)
 
-        name = '{0}:{1}'.format(module.__name__, service.__name__)
+        name = '{0}:{1}:{2}'.format(module.__name__, service.__name__, service_name)
 
         # if name is None:
         #     name = '{0}:{1}'.format(module.__name__, service.__name__)
 
-        if name in self.processors:
+        if service_name in self.processors:
             raise TApplicationException(
                 type=TApplicationException.INTERNAL_ERROR,
-                message='processor for `{0}` already registered'.format(name))
+                message='processor for `{0}` already registered'.format(service_name))
 
-        for srv in service.thrift_services:
-            if srv in self.service_map:
-                raise TApplicationException(
-                    type=TApplicationException.INTERNAL_ERROR,
-                    message='cannot multiplex processor for `{0}`; '
-                            '`{1}` is already a registered method for `{2}`'
-                            .format(name, srv, self.service_map[srv]))
-            self.service_map[srv] = name
+        # for srv in service.thrift_services:
+        #     if srv in self.service_map:
+        #         raise TApplicationException(
+        #             type=TApplicationException.INTERNAL_ERROR,
+        #             message='cannot multiplex processor for `{0}`; '
+        #                     '`{1}` is already a registered method for `{2}`'
+        #                     .format(name, srv, self.service_map[srv]))
+        #     self.service_map[srv] = name
 
-        self.processors[name] = processor
+        self.processors[service_name] = processor
 
     def process_in(self, iprot):
         api, type, seqid = iprot.read_message_begin()
-        if api not in self.service_map:
+
+        print api, self.processors
+
+        service_name, api = api.split("+")
+
+        # if api not in self.service_map:
+        #     iprot.skip(TType.STRUCT)
+        #     iprot.read_message_end()
+        #     e = TApplicationException(TApplicationException.UNKNOWN_METHOD)
+        #     return api, seqid, e, None   # noqa
+        
+        if service_name not in self.processors:
             iprot.skip(TType.STRUCT)
             iprot.read_message_end()
             e = TApplicationException(TApplicationException.UNKNOWN_METHOD)
             return api, seqid, e, None   # noqa
 
-        proc = self.processors[self.service_map[api]]
+        proc = self.processors[service_name]
         args = getattr(proc._service, api + "_args")()
         args.read(iprot)
         iprot.read_message_end()

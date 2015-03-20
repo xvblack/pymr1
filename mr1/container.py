@@ -1,5 +1,5 @@
 import thriftpy
-from thriftpy.protocol import TBinaryProtocolFactory
+from thriftpy.protocol import TBinaryProtocolFactory, TMultiplexingProtocol
 from thriftpy.transport import TBufferedTransportFactory, TServerSocket, TSocket
 from thriftpy.server import TThreadedServer
 from thriftpy.thrift import TClient, TMultiplexingProcessor, TProcessor
@@ -33,9 +33,9 @@ class MultiplexThriftClient:
         proto_factory = factory.PROTO_FAC_CLASS()
         transport = trans_factory.get_transport(socket)
         protocol = proto_factory.get_protocol(transport)
-        # sub_protocol = TMultiplexedProtocol(protocol, params["service_name"])
+        multiplex_protocol = TMultiplexingProtocol(protocol, endpoint.service_name)
         transport.open()
-        self.client = TClient(service, protocol)
+        self.client = TClient(service, multiplex_protocol)
 
 class MultiplexThriftFactory:
 
@@ -78,13 +78,19 @@ class Container(Thread):
         self.dir = utility.Directory(conf["work_dir"])
         self.thrift_server = MultiplexThriftFactory.make_server(conf["thrift"])
         self.thrift_server.server.daemon = True
+        self.services = {}
 
     def run(self):
         self.thrift_server.server.serve()
 
     def add_service(self, service_name, service, handler):
         processor = TProcessor(service, handler)
-        self.thrift_server.processor.register_processor(processor)
+        for i in itertools.count():
+            if "%s_%s" % (service_name, i) not in self.services:
+                break
+        service_name = "%s_%s" % (service_name, i)
+        self.services[service_name] = processor
+        self.thrift_server.processor.register_processor(service_name, processor)
         return service_name
 
     def generate_conf(self, task_conf={}):

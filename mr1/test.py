@@ -1,3 +1,7 @@
+# import sys, os
+#
+# sys.path.append(os.path.join(os.getcwd(), "thriftpy"))
+
 from mr1.container import Container
 from mr1.mapred import MapRedMasterTask, mapred_thrift
 from thriftpy.rpc import client_context

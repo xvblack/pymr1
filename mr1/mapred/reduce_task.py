@@ -1,7 +1,94 @@
 from multiprocessing import Process
 from subprocess import Popen, PIPE
-
+import Queue
 from .mapred_taskbase import MapRedTaskBase
+import mr1.utility as utility
+import mr1.fs as fs
+from threading import Thread
+import time
+
+from .map_task import SplitLineIterator
+from .master_task import ShuffleOutputInfo
+from .utility import Merger
+
+class SimpleReducer:
+    def __init__(self, collector):
+        self.collector = collector
+        self.count = 0
+
+    def reduce(self, key, values):
+        self.count += 1
+        print self.count, key, values
+        self.collector.collect(key, len(values))
+
+class NullCollector:
+    def __init__(self):
+        self.count = 0
+
+    def collect(self, key, value):
+        self.count += 1
+        print self.count
+
+class InMemoryCollector:
+
+    def __init__(self, task):
+        self.task = task
+        self.data = []
+
+    def collect(self, key, value):
+        self.data.append((key, value))
+
+    def finalize(self):
+        output_file = self.task.dir.create_tmp_file(name="reduce_output")
+        output_stream = output_file.open("w")
+
+        for k, v in self.data:
+            output_stream.write(u"%s\t%s\n" % (k, v))
+
+        output_stream.close()
+
+class ShuffleWatcher(Thread):
+
+    def __init__(self, task):
+        Thread.__init__(self)
+        self.task = task
+        self.queue = Queue.Queue()
+        self.finished = set()
+        self.all_finished = False
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        while not self.all_finished:
+            self.update()
+            time.sleep(5)
+
+    def update(self):
+        master = self.task.master
+        outputs = master.get_all_outputs(self.task.task_conf)
+        outputs = [ShuffleOutputInfo.from_dict(output) for output in outputs]
+
+        self.all_finished = True
+
+        for output in outputs:
+            if output.map_id in self.finished:
+                continue
+            elif not output.finished:
+                self.all_finished = False
+            else:
+                self.finished.add(output.map_id)
+                self.queue.put(output)
+
+        print "updated"
+        print self.finished
+
+    def get(self):
+        print "working"        
+        while True:
+            try:
+                return self.queue.get(timeout=10)
+            except Queue.Empty:
+                pass
 
 class ReduceTask(MapRedTaskBase):
 
@@ -9,66 +96,51 @@ class ReduceTask(MapRedTaskBase):
     def prepare(self):
         pass
 
+    def run_task(self, task_conf, zip):
+        self.task_conf = task_conf
+        self.convert_task_conf()
+        self.logger.debug(utility.format_dict(self.conf))
+        self.logger.debug(utility.format_dict(self.task_conf))
+        self.setup_workdir()
+
+        self.master = self.get_mapred_master()
+        self.start()
+        print("run_task finished")
+
     def run(self):
 
-        # get params
-        
-        reducer_uri = params["reducer"]
-        shuffle_files = params["shuffle_files"]
-
-        # Download reducer scripts
-        
-        reducer_file = self.container.fs.cache_local_from_uri(reducer_uri)
+        # TODO: 
 
         # Watching for MapTask finished
 
-        watch_queue = queue.Queue()
-        count = len(self.shuffle_files)
-
-        for s in self.shuffle_files:
-            s.on_finished(watch_queue.put)
+        watcher = ShuffleWatcher(self)
+        input_iters = []
 
         # Cache files locally
 
-        input_streams = []
+        while not watcher.all_finished:
 
-        while count > 0:
-            uid = q.get()
-            self.logger.debug("shuffle file %s finished" % uid)
+            output = watcher.get()
 
-            self.logger.debug("caching file uri: %s" % uid)
+            output_info = output.output_info
 
-            f = self.container.fs.cache_local_from_uri(uri)
-            line_iter = iter(f.open("r"))
-            input_streams.append(line_iter)
-
-            count = count - 1
+            data_stream = fs.open(output_info, "r")
+            kv_iter = SplitLineIterator(data_stream)
+            input_iters.append(kv_iter)
 
         # Shuffle
         
         merger = Merger()
-        output_stream = merger.merge(input_streams)
+        merged_iter = merger.merge(input_iters)
 
         # Run reducer
 
-        directory = self.container.fs.new_directory_with_prefix("reduce")
-        self.logger.debug("reducer output to %s" % directory)
+        collector = InMemoryCollector(self)
+        reducer = SimpleReducer(collector)
+        for k, vs in merged_iter:
+            reducer.reduce(k, vs)
+        collector.finalize()
 
-        output_file = directory.touch("reduced.tmp")
-        output = output_file.open("w")
-
-        reduce_process = Popen(
-            ["python", reducer_file.path], stdin=PIPE, stdout=output)
-
-        for line in output_stream:
-            reduce_process.stdin.write(line)
-
-        reduce_process.communicate()
-
-        self.logger.debug("reducer %s finished" % self.jobid)
-
-        id = self.container.fs.addFile(open(str(directory.touch("reduced.tmp")), "r"))
-        replica = self.container.fs.getReplica(id)
-        self.container.namenode.addReplicaToFile(replica, self.output_uri)
-
+        self.logger.debug("reducer %s finished" % self.task_conf["job_id"])
+        self.master.report_reduce_finished(self.task_conf)
         return

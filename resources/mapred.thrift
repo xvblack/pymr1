@@ -14,5 +14,13 @@ service MapRedMaster{
 
 	void report_progress(1:configuration map_conf, 2:information progress_info);
 	void register_output(1:configuration map_conf, 2:i32 reduce_id, 3:information output_info);
-	void mark_finished_output(1:configuration map_conf);
+	void report_map_finished(1:configuration map_conf);
+
+	void report_reduce_finished(1:configuration reduce_conf);
+
+	list<information> get_all_outputs(1:configuration reduce_conf);
+}
+
+service Container{
+	void run_task(1:configuration conf, 2:binary zip);
 }

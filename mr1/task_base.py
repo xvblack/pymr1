@@ -1,4 +1,5 @@
 import threading, logging
+import utility
 
 ConcurrentBase=threading.Thread
 
@@ -15,11 +16,11 @@ class TaskBase(ConcurrentBase):
         self.container = container
         self.conf = conf
 
-        for key in self.conf:
-        	if key.endswith("endpoint"):
-        		addr = self.conf[key]
+    def setup_workdir(self):
+        assert "work_dir" in self.conf
 
-        		del self.conf[key]
-        		key = key.split("-")[0]
-
-        		self.conf[key] = ThriftEndPoint.deserialize(addr)
+        if not isinstance(self.conf["work_dir"], utility.Directory):
+            self.dir = utility.Directory(self.conf["work_dir"])
+        else:
+            self.dir = self.conf["work_dir"]
+        print self.dir

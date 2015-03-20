@@ -9,6 +9,7 @@ from mr1.rpc import IpEndPoint, ThriftEndPoint
 import logging
 
 from mr1.mapred import MapTask, ReduceTask, MapRedMasterTask
+import itertools
 
 
 class MultiplexThriftServer:
@@ -34,7 +35,7 @@ class MultiplexThriftClient:
         protocol = proto_factory.get_protocol(transport)
         # sub_protocol = TMultiplexedProtocol(protocol, params["service_name"])
         transport.open()
-        self.client = TClient(endpoint.service, protocol)
+        self.client = TClient(service, protocol)
 
 class MultiplexThriftFactory:
 
@@ -74,7 +75,9 @@ class Container(Thread):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.daemon = True
         self.conf = conf
+        self.dir = utility.Directory(conf["work_dir"])
         self.thrift_server = MultiplexThriftFactory.make_server(conf["thrift"])
+        self.thrift_server.server.daemon = True
 
     def run(self):
         self.thrift_server.server.serve()
@@ -84,11 +87,29 @@ class Container(Thread):
         self.thrift_server.processor.register_processor(processor)
         return service_name
 
+    def generate_conf(self, task_conf={}):
+        new_work_dir = self.dir.create_dir(prefix=task_conf["job_id"])
+        return {"work_dir" : new_work_dir}
+
     def run_task(self, task_conf, zip):
         self.logger.debug("running job conf\n%s" % utility.format_dict(task_conf))
 
-        assert task_conf["type"] in ["map", "reduce", "mapred-master"]
+        assert task_conf["type"] in ["map", "reduce", "mapred-master", "sleep"]
 
+        task_klass = None
+        if task_conf["type"] == "map":
+            task_klass = MapTask
+        elif task_conf["type"] == "reduce":
+            task_klass = ReduceTask
+        elif task_conf["type"] == "mapred-master":
+            task_klass = MapRedMasterTask
+        elif task_conf["type"] == "sleep":
+            # DEBUG: 
+            from mr1.mapred.test import SleepTask
+            task_klass = SleepTask
+
+        task = task_klass(self, self.generate_conf(task_conf))
+        task.run_task(task_conf, zip)
 
         pass
 

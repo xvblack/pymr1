@@ -12,7 +12,7 @@ from .master_task import ShuffleOutputInfo
 from .utility import Merger
 
 class SimpleReducer:
-    def __init__(self, collector):
+    def __init__(self, task, collector):
         self.collector = collector
         self.count = 0
 
@@ -20,6 +20,21 @@ class SimpleReducer:
         self.count += 1
         print "%s#%s#%s" % (self.count, key, values)
         self.collector.collect(key, len(values))
+
+class BinaryFunctionReducer:
+    def __init__(self, task, collector):
+        self.task = task
+        self.collector = collector
+
+        self.environ = {}
+        exec self.task.zip in self.environ
+
+        self.reducer = self.environ["reducer"]
+
+    def reduce(self, key, values):
+        output_key, output_val = self.reducer(key, values)
+        print "%s#%s" % (output_key, output_val)
+        self.collector.collect(output_key, output_val)
 
 class NullCollector:
     def __init__(self):
@@ -136,7 +151,7 @@ class ReduceTask(MapRedTaskBase):
         # Run reducer
 
         collector = InMemoryCollector(self)
-        reducer = SimpleReducer(collector)
+        reducer = SimpleReducer(self, collector)
         for k, vs in merged_iter:
             reducer.reduce(k, vs)
         collector.finalize()

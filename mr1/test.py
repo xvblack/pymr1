@@ -40,7 +40,16 @@ conf = {
 
 utility.setup_logging()
 
+code = """
 
+def mapper(key, value):
+	print key, value
+	return key, value
+
+def reducer(key, values):
+	return key, len(values)
+
+"""
 
 # try:
 container = Container(conf)
@@ -58,7 +67,7 @@ print "inited"
 # 	c.run_task(task_conf, "a")
 # 	print l
 # 	
-container.run_task(mapred_master_conf, "a")
+container.run_task(mapred_master_conf, code)
 # container.run_task(mapred_master_conf2, "a")
 
 

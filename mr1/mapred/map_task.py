@@ -43,6 +43,23 @@ class SimplePrintMapper:
 	def map(self, key, value):
 		self.collector.collect(key, value)
 
+class BinaryFunctionMapper:
+
+	def __init__(self, task, collector):
+		self.task = task
+		self.collector = collector
+
+		# load codes
+		# TODO: allow complex code import
+		
+		self.environ = {}
+		exec self.task.zip in self.environ
+		self.mapper = self.environ["mapper"]
+	
+	def map(self, key, value):
+		inter_key, inter_val = self.mapper(key, value)
+		self.collector.collect(inter_key, inter_val)
+
 class NullCollector:
 
 	def __init__(self, task, partitioner):
@@ -73,7 +90,6 @@ class InMemoryCollector:
 				output_stream.write(u"%s\t%s\n" % (k, v))
 			output_stream.close()
 			# output = {"type":"local", "path": str(output_file)}
-			# TODO: refactor code to fs part
 			file_service = self.task.container.get_service("thrift-fs")
 			assert file_service is not None
 			output = file_service.add_file(output_file)
@@ -120,7 +136,8 @@ class MapTask(MapRedTaskBase):
     	partitioner = HashPartitioner(self)
 
     	collector = InMemoryCollector(self, partitioner)
-    	mapper = SimplePrintMapper(self, collector)
+    	# mapper = SimplePrintMapper(self, collector)
+    	mapper = BinaryFunctionMapper(self, collector)
 
     	for key, val in record_stream:
     		mapper.map(key, val)

@@ -1,12 +1,12 @@
 import threading, logging
+import multiprocessing
 import utility
+from rpc import ContainerService
 
 ConcurrentBase=threading.Thread
+# ConcurrentBase = multiprocessing.Process
 
-class TaskBase(ConcurrentBase):
-
-    def endpoint(self):
-        return self.container.thrift_server.endpoint.get_service(self.service_id)
+class TaskBase(ConcurrentBase, ContainerService):
 
     def __init__(self, container, conf):
         ConcurrentBase.__init__(self)

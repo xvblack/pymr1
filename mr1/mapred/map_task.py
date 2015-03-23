@@ -72,7 +72,11 @@ class InMemoryCollector:
 			for k, v in self.data[key]:
 				output_stream.write(u"%s\t%s\n" % (k, v))
 			output_stream.close()
-			output = {"type":"local", "path": str(output_file)}
+			# output = {"type":"local", "path": str(output_file)}
+			# TODO: refactor code to fs part
+			file_service = self.task.container.get_service("thrift-fs")
+			assert file_service is not None
+			output = file_service.add_file(output_file)
 			self.task.master.register_output(self.task.task_conf, key, output)
 
 		self.task.master.report_map_finished(self.task.task_conf)

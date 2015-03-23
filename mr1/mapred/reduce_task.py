@@ -124,7 +124,7 @@ class ReduceTask(MapRedTaskBase):
 
             output_info = output.output_info
 
-            data_stream = fs.open(output_info, "r")
+            data_stream = fs.open(self.container, output_info, "r")
             kv_iter = SplitLineIterator(data_stream, "\t")
             input_iters.append(kv_iter)
 

@@ -152,6 +152,8 @@ class MapRedMasterTask(MapRedTaskBase):
 		self.map_confs = map_confs
 		self.reduce_confs = reduce_confs
 
+		self.logger.debug("reduce_confs: %s" % self.reduce_confs)
+
 		self.logger.debug("%s" % self.reduce_confs)
 
 		map_confs_dict = dict([(map_conf.id(), map_conf) for map_conf in map_confs])

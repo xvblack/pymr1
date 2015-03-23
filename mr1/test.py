@@ -4,6 +4,7 @@
 
 from mr1.container import Container
 from mr1.mapred import MapRedMasterTask, mapred_thrift
+from mr1.fs import ThriftLocalFileService, fs_thrift
 from thriftpy.rpc import client_context
 import threading, sys, time
 import mr1.utility as utility
@@ -43,7 +44,9 @@ utility.setup_logging()
 
 # try:
 container = Container(conf)
+fs = ThriftLocalFileService(container, {})
 container.start()
+container.add_service("thrift-fs", fs_thrift.FileSystem, fs, unique=True)
 
 # mapred_master = MapRedMasterTask(container, mapred_master_conf)
 

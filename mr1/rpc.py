@@ -30,3 +30,16 @@ class ThriftEndPoint:
         host, remain = s.split(":")
         port, service_name = remain.split("/")
         return ThriftEndPoint(host, int(port), service_name)
+
+class ContainerService:
+
+    def endpoint(self):
+        assert hasattr(self, "container")
+        assert hasattr(self, "service_id")
+        return self.container.thrift_server.endpoint.get_service(self.service_id)
+
+    def register_container(self, service_type, service, unique=False):
+        # TEST: is this work?
+        # TODO: refactor
+        self.service_type = service_type
+        self.service_id = self.container.add_service(service_type, service, self, unique)

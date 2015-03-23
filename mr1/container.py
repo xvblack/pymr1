@@ -5,7 +5,7 @@ from thriftpy.server import TThreadedServer
 from thriftpy.thrift import TClient, TMultiplexingProcessor, TProcessor
 from threading import Thread
 import mr1.utility as utility
-from mr1.rpc import IpEndPoint, ThriftEndPoint, container_thrift
+from mr1.rpc import IpEndPoint, ThriftEndPoint, container_thrift, ContainerService
 import logging
 
 from mr1.mapred import MapTask, ReduceTask, MapRedMasterTask
@@ -77,7 +77,7 @@ class RandomResourceNode:
         k = random.choice(self.container_list.keys())
         return self.container_list[k].serialize()
 
-class Container(Thread):
+class Container(Thread, ContainerService):
 
     """
     Container for underlying services from this node
@@ -96,7 +96,8 @@ class Container(Thread):
         self.thrift_server.server.daemon = True
         self.services = {}
 
-        self.add_service("container", container_thrift.Container, self, unique=True)
+        self.service_id = self.add_service("container", container_thrift.Container, self, unique=True)
+        self.container = self
         self.setup_resource_node()
 
     def setup_resource_node(self):
@@ -104,6 +105,14 @@ class Container(Thread):
         conf = self.conf["resource_node"]
         if conf["type"] == "local":
             self.resource_node = LocalResourceNode(self)
+        elif conf["type"] == "remote":
+            # TODO: not tested
+            endpoint = ThriftEndPoint.deserialize(conf["endpoint"])
+            self.resource_node = self.connect_remote_service(endpoint, container_thrift.ResourceNode)
+            self.resource_node.add_container(self.endpoint().serialize())
+        elif conf["type"] == "here":
+            self.resource_node = RandomResourceNode(self)
+            self.resource_node.add_container(self.endpoint().serialize())
         else:
             raise Exception("No resource node")
 
@@ -120,9 +129,16 @@ class Container(Thread):
         else:
             service_name = service_name
         assert service_name not in self.services
-        self.services[service_name] = processor
+        self.services[service_name] = handler
         self.thrift_server.processor.register_processor(service_name, processor)
         return service_name
+
+    def get_service(self, service_name):
+        # TODO: support no unique service with certain scheduler
+        if service_name in self.services:
+            return self.services[service_name]
+        else:
+            return None
 
     def generate_conf(self, task_conf={}):
         new_work_dir = self.dir.create_dir(prefix=task_conf["job_id"])

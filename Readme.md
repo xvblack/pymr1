@@ -11,5 +11,8 @@ TODO:
 
 1. Add dfs support
 2. Add multiple node support
-3. 
+3. migrate thread to process based solution
+	1. need a process-able processor
+	2. or change heavy-load part to multiprocess only
+4. check possible race condition
 

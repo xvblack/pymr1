@@ -8,6 +8,7 @@ from mr1.fs import ThriftLocalFileService, fs_thrift
 from thriftpy.rpc import client_context
 import threading, sys, time
 import mr1.utility as utility
+import unittest
 
 thrift_conf = {
 	"host" : "127.0.0.1",
@@ -51,28 +52,20 @@ def reducer(key, values):
 
 """
 
-# try:
-container = Container(conf)
-fs = ThriftLocalFileService(container, {})
-container.start()
-container.add_service("thrift-fs", fs_thrift.FileSystem, fs, unique=True)
 
-# mapred_master = MapRedMasterTask(container, mapred_master_conf)
+class TestCodeDist(unittest.TestCase):
 
-
-print "inited"
-
-# with client_context(mapred_thrift.MapRedMaster, "127.0.0.1", "8081") as c:
-# 	l = c.get_map_output_locations(1)
-# 	c.run_task(task_conf, "a")
-# 	print l
-# 	
-container.run_task(mapred_master_conf, code)
-# container.run_task(mapred_master_conf2, "a")
+	def setUp(self):
+		self.container = Container(conf)
+		fs = ThriftLocalFileService(self.container, {})
+		self.container.start()
+		self.container.add_service("thrift-fs", fs_thrift.FileSystem, fs, unique=True)
 
 
-while True:
-	time.sleep(100)
-# except Exception as e:
-# 	print "error %s %s" % (type(e), e)
-# 	sys.exit(0)
+	def test_run(self):
+		self.container.run_task(mapred_master_conf, code)
+		while True:
+			time.sleep(100)
+
+if __name__ == '__main__':
+	unittest.main()

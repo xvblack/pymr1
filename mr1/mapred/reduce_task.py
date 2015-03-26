@@ -1,7 +1,7 @@
 from multiprocessing import Process
 from subprocess import Popen, PIPE
 import Queue
-from .mapred_taskbase import MapRedTaskBase
+from .mapred_taskbase import MapRedTaskBase, mapred_thrift
 import mr1.utility as utility
 import mr1.fs as fs
 from threading import Thread
@@ -117,6 +117,7 @@ class ReduceTask(MapRedTaskBase):
         self.logger.debug(utility.format_dict(self.conf))
         self.logger.debug(utility.format_dict(self.task_conf))
         self.setup_workdir()
+        self.register_container("reduce", mapred_thrift.MapTask)
 
         self.master = self.get_mapred_master()
         self.start()

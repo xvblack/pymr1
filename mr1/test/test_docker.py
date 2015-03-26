@@ -15,20 +15,6 @@ thrift_conf = {
 	"port" : "8081"
 }
 
-mapred_master_conf = {
-	"type" : "mapred-master",
-	"job_id" : "mapred1",
-	"reduce_count" : "1",
-	"input_paths" : "/tmp/a"
-}
-
-mapred_master_conf2 = {
-	"type" : "mapred-master",
-	"job_id" : "mapred2",
-	"reduce_count" : "5",
-	"input_paths" : "/tmp/a"
-}
-
 resource_node_conf = {
 	"type" : "here"
 }
@@ -39,19 +25,13 @@ conf = {
 	"resource_node" : resource_node_conf
 }
 
+docker_task_conf = {
+	"type" : "docker",
+	"job_id" : "docker_1",
+	"server" : "boot2docker"
+}
+
 utility.setup_logging()
-
-code = """
-
-def mapper(key, value):
-	print key, value
-	return key, value
-
-def reducer(key, values):
-	return key, len(values)
-
-"""
-
 
 class TestCodeDist(unittest.TestCase):
 
@@ -63,7 +43,7 @@ class TestCodeDist(unittest.TestCase):
 
 	def test_run(self):
 		self.assertEqual(self.container.get_service("resource_node").endpoint().serialize(), "127.0.0.1:8081/resource_node")
-		self.container.run_task(mapred_master_conf, code)
+		self.container.run_task(docker_task_conf, "")
 		while True:
 			time.sleep(100)
 

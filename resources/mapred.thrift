@@ -6,7 +6,19 @@ struct Location{
 typedef map<string, string> configuration;
 typedef map<string, string> information;
 
-service MapRedMaster{
+service TaskBase {
+	bool ping();
+}
+
+service MapTask extends TaskBase{
+
+}
+
+service ReduceTask extends TaskBase{
+	
+}
+
+service MapRedMaster extends TaskBase{
 	void run_task(1:configuration conf, 2:binary zip);
 	Location get_map_output_locations(1:i32 reduce_id);
 
@@ -17,8 +29,4 @@ service MapRedMaster{
 	void report_reduce_finished(1:configuration reduce_conf);
 
 	list<information> get_all_outputs(1:configuration reduce_conf);
-}
-
-service FileService{
-
 }

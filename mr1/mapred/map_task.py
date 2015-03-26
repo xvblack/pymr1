@@ -97,7 +97,7 @@ class InMemoryCollector:
 
 		self.task.master.report_map_finished(self.task.task_conf)
 
-		print self.data
+		self.task.logger.debug("data output: %s" % self.data)
 
 
 class HashPartitioner:
@@ -122,6 +122,7 @@ class MapTask(MapRedTaskBase):
     	self.logger.debug(utility.format_dict(self.task_conf))
     	self.setup_workdir()
     	self.master = self.get_mapred_master()
+    	self.register_container("map", mapred_thrift.MapTask)
     	self.start()
 
     def run(self):

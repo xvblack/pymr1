@@ -70,7 +70,7 @@ class MapRedMasterTask(MapRedTaskBase):
 		self.logger.debug("mapred master registered")
 
 	def run_task(self, task_conf, zip):
-		print task_conf
+		self.logger.debug("task configuration: %s" % task_conf)
 
 		self.task_conf = task_conf
 		self.job_id = task_conf["job_id"]

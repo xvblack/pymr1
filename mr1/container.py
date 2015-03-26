@@ -9,6 +9,7 @@ from mr1.rpc import IpEndPoint, ThriftEndPoint, container_thrift, ContainerServi
 import logging
 
 from mr1.mapred import MapTask, ReduceTask, MapRedMasterTask
+from mr1.docker import DockerTask
 import itertools, random
 
 
@@ -61,11 +62,11 @@ class LocalResourceNode:
     def allocate_node_container(self):
         return self.container.thrift_server.endpoint.get_service("container").serialize()
 
-class RandomResourceNode:
+class RandomResourceNode(ContainerService):
 
     def __init__(self, container):
-        self.local_container = local_container
-        self.local_container.add_service("resource_node", container_thrift.ResourceNode, self, unique=True)
+        self.container = container
+        self.register_container("resource_node", container_thrift.ResourceNode, unique=True)
         self.container_list = {}
 
 
@@ -147,7 +148,7 @@ class Container(Thread, ContainerService):
     def run_task(self, task_conf, zip):
         self.logger.debug("running job conf\n%s" % utility.format_dict(task_conf))
 
-        assert task_conf["type"] in ["map", "reduce", "mapred-master", "sleep"]
+        assert task_conf["type"] in ["map", "reduce", "mapred-master", "docker", "sleep"]
 
         task_klass = None
         if task_conf["type"] == "map":
@@ -156,6 +157,8 @@ class Container(Thread, ContainerService):
             task_klass = ReduceTask
         elif task_conf["type"] == "mapred-master":
             task_klass = MapRedMasterTask
+        elif task_conf["type"] == "docker":
+            task_klass = DockerTask
         elif task_conf["type"] == "sleep":
             # DEBUG: 
             from mr1.mapred.test import SleepTask
@@ -164,7 +167,7 @@ class Container(Thread, ContainerService):
         task = task_klass(self, self.generate_conf(task_conf))
         task.run_task(task_conf, zip)
 
-        pass
+        return task.endpoint().serialize()
 
     def connect_resource_node(self):
         # TODO: replace with real resource node

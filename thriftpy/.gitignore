@@ -2,8 +2,6 @@
 .python-version
 
 # C extensions
-*.h
-*.c
 *.so
 
 # intellij files

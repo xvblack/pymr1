@@ -1,6 +1,5 @@
 import thriftpy
 from mr1.task_base import TaskBase
-from mr1.rpc import ThriftEndPoint
 
 
 mapred_thrift = thriftpy.load("resources/mapred.thrift", module_name="mapred_thrift")

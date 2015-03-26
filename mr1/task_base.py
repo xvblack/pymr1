@@ -2,6 +2,7 @@ import threading, logging
 import multiprocessing
 import utility
 from rpc import ContainerService
+from mr1.rpc import ThriftEndPoint
 
 ConcurrentBase=threading.Thread
 # ConcurrentBase = multiprocessing.Process

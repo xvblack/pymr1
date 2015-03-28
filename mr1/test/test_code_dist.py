@@ -8,6 +8,7 @@ from mr1.fs import ThriftLocalFileService, fs_thrift
 from thriftpy.rpc import client_context
 import threading, sys, time
 import mr1.utility as utility
+from pathlib import Path
 import unittest
 
 thrift_conf = {
@@ -15,18 +16,20 @@ thrift_conf = {
 	"port" : "8081"
 }
 
+input_path = str(Path("resources/input/space_numbers.txt").resolve())
+
 mapred_master_conf = {
 	"type" : "mapred-master",
 	"job_id" : "mapred1",
 	"reduce_count" : "1",
-	"input_paths" : "/tmp/a"
+	"input_paths" : input_path
 }
 
 mapred_master_conf2 = {
 	"type" : "mapred-master",
 	"job_id" : "mapred2",
 	"reduce_count" : "5",
-	"input_paths" : "/tmp/a"
+	"input_paths" : input_path
 }
 
 resource_node_conf = {

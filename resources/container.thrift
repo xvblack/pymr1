@@ -12,4 +12,5 @@ service Container{
 
 service ResourceNode{
 	string allocate_node_container();
+	void add_container(1:string endpoint);
 }

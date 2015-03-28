@@ -1,0 +1,7 @@
+thrift:
+    port: 8081
+
+resource_node:
+    type: here
+
+work_dir: /tmp/container

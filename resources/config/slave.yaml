@@ -1,0 +1,4 @@
+thrift:
+    port: 8081
+
+work_dir: /tmp/container

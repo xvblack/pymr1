@@ -15,6 +15,10 @@ import itertools, random
 
 class MultiplexThriftServer:
     def __init__(self, factory, params):
+        if "host" not in params or params["host"] == "":
+            # make it platform independent
+            import socket
+            params["host"] = socket.gethostbyname(socket.gethostname())
         self.endpoint = IpEndPoint(params["host"], params["port"])
         socket = factory.SERVER_SOCKET_CLASS(host=params["host"], port=params["port"])
         processor = TMultiplexingProcessor()

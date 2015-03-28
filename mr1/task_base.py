@@ -24,7 +24,6 @@ class TaskBase(ConcurrentBase, ContainerService):
             self.dir = utility.Directory(self.conf["work_dir"])
         else:
             self.dir = self.conf["work_dir"]
-        print self.dir
 
     def convert_task_conf(self):
 

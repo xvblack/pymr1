@@ -14,3 +14,21 @@ class DockerTask(TaskBase):
 		# TODO: other docker container
 		self.docker_client = docker.Client(**docker.utils.kwargs_from_env())
 		print self.docker_client.version()
+
+		self.image = task_conf["image"]
+		self.command = task_conf["cmd"]
+		self.start()
+
+	def run(self):
+		container_id = self.docker_client.create_container(
+			image=self.image,
+			command=self.command,
+			detach=True)
+		# self.docker_client.start(container_id)
+		self.info = self.docker_client.inspect_container(container_id)
+		print self.docker_client.logs(container_id)
+		
+	def get_ip(self):
+		if not hasattr(self, "info"):
+			return ""
+		return self.info["NetworkSettings"]["IpAddress"]
